@@ -7,12 +7,12 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// ============ MIDDLEWARE ============
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Path to data file
+// ============ DATA STORAGE ============
 const dataFilePath = path.join(__dirname, 'data', 'profiles.json');
 
 // Ensure data directory exists
@@ -26,7 +26,7 @@ if (!fs.existsSync(dataFilePath)) {
     fs.writeFileSync(dataFilePath, JSON.stringify([]));
 }
 
-// Helper functions
+// ============ HELPER FUNCTIONS ============
 const readProfiles = () => {
     try {
         const data = fs.readFileSync(dataFilePath, 'utf8');
@@ -64,10 +64,39 @@ app.get('/api/profiles', (req, res) => {
     }
 });
 
+// GET single profile by ID
+app.get('/api/profiles/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const profiles = readProfiles();
+        const profile = profiles.find(p => p.id === id);
+        
+        if (!profile) {
+            return res.status(404).json({
+                success: false,
+                message: 'Profile not found'
+            });
+        }
+        
+        res.json({
+            success: true,
+            data: profile
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching profile',
+            error: error.message
+        });
+    }
+});
+
 // POST create new profile
 app.post('/api/profiles', (req, res) => {
     try {
         const { name, bio, skills, socialLinks, avatarColor } = req.body;
+        
+        console.log('Received data:', req.body); // Debug log
         
         // Validation
         if (!name || !bio) {
@@ -111,7 +140,7 @@ app.post('/api/profiles', (req, res) => {
             bio: bio.trim(),
             skills: skillsArray,
             socialLinks: socialLinksArray,
-            avatarColor: avatarColor || '#667eea',
+            avatarColor: avatarColor || '#6C63FF',
             initials: initials,
             createdAt: new Date().toISOString()
         };
@@ -165,6 +194,19 @@ app.delete('/api/profiles/:id', (req, res) => {
     }
 });
 
+// ============ ROOT ROUTE (for testing) ============
+app.get('/', (req, res) => {
+    res.json({
+        message: 'User Profile API is running!',
+        endpoints: {
+            profiles: '/api/profiles',
+            create: 'POST /api/profiles',
+            delete: 'DELETE /api/profiles/:id'
+        }
+    });
+});
+
+// ============ START SERVER ============
 app.listen(PORT, () => {
     console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
